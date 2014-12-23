@@ -1,3 +1,4 @@
+-- | This module provides transition semantics for the SIMPLE language
 module Language.SIMPLE.TransitionSemantics (
    isRedex
   ,reduceExpr
@@ -111,6 +112,8 @@ reduceExpr σ expr
     Not e                          -> Not (reduceExpr σ e)
     _                              -> error "Unknown expression"
 
+-- |
+-- make reduce sequence.
 reduceSequence :: (Ord a, Show a) => Env Expr a -> Expr a -> [Expr a]
 reduceSequence = (till isNormalForm .) . iterate . reduceExpr
 
@@ -142,23 +145,29 @@ till p xs = case break p xs of
 runExprMachine :: (Ord a, Show a) => Env Expr a -> Expr a -> IO ()
 runExprMachine = (mapM_ (putStrLn . render . pprExpr) .) . reduceSequence
 
+-- |
+-- Predicate whether the specified statement is reducible.
 isReducible :: Stm a -> Bool
 isReducible DoNothing = False
 isReducible _         = True
 
-reduceStm :: (Ord a, Show a) => Stm a -> Env Expr a -> (Stm a, Env Expr a)
-reduceStm stm σ
-    | not . isReducible $ stm = (stm,σ)
+-- |
+-- make a small-step reducing of the specified statement in the specified environment.
+reduceStm :: (Ord a, Show a) => Env Expr a -> Stm a -> (Env Expr a, Stm a)
+reduceStm σ stm
+    | not . isReducible $ stm = (σ,stm)
     | otherwise               = case stm of
     Assign x e 
-        | isNormalForm e -> (DoNothing, insertEnv x e σ)
-        | otherwise      -> (Assign x (reduceExpr σ e), σ)
+        | isNormalForm e -> (insertEnv x e σ, DoNothing)
+        | otherwise      -> (σ, Assign x (reduceExpr σ e))
     If e t f
         | isNormalForm e -> case e of
-            Boolean c -> (if c then t else f, σ)
+            Boolean c -> (σ, if c then t else f)
             _         -> error "Type error"
-        | otherwise      -> (If (reduceExpr σ e) t f, σ)
+        | otherwise      -> (σ, If (reduceExpr σ e) t f)
     While e s
-        | isNormalForm e -> case e of Boolean c -> (if c then Sequence s stm else DoNothing, σ)
-        | otherwise      -> (While (reduceExpr σ e) s, σ)
+        | isNormalForm e -> case e of 
+            Boolean c -> (σ, if c then Sequence s stm else DoNothing)
+            _         -> error "Type error"
+        | otherwise      -> (σ,While (reduceExpr σ e) s)
     _ -> error (render (pprStm stm))

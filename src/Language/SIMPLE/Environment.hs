@@ -1,5 +1,12 @@
 -- | This module provides a environment for SIMPLE language.
-module Language.SIMPLE.Environment (Env,emptyEnv,insertEnv,lookupEnv,unionEnv,fromListEnv,toListEnv) where
+module Language.SIMPLE.Environment (
+   Env
+  ,emptyEnv
+  ,insertEnv
+  ,lookupEnv
+  ,unionEnv
+  ,fromListEnv
+  ,toListEnv) where
 
 import Data.Map (Map)
 import qualified Data.Map as M
