@@ -5,6 +5,7 @@ module Language.SIMPLE.PrettyPrint (pprExpr,pprStm,pprEnv,pprStepStm) where
 
 import Control.Arrow ((***))
 import Data.List
+import Data.Tuple
 import Text.PrettyPrint
 import Language.SIMPLE.AbstractSyntax
 import Language.SIMPLE.Environment
@@ -53,7 +54,7 @@ pprExpr' expr | isAtom expr  = pprExpr expr
 -- Pretty Printer for Statement
 --
 -- >>> putStr $ render $ pprStm (DoNothing :: Stm Name)
--- 
+-- φ
 -- >>> putStr $ render $ pprStm (Assign "z" (Add (Variable "z") (Number 1)) :: Stm Name)
 -- z := z ＋ 1
 -- >>> putStr $ render $ pprStm (If (LessThan (Variable "y") (Number 0)) (Assign "z" (Add (Variable "y") (Number 1))) (Assign "z" (Variable "y")) :: Stm Name)
@@ -64,7 +65,7 @@ pprExpr' expr | isAtom expr  = pprExpr expr
 -- while (i ＜ 10) {sum := sum ＋ i; i := i ＋ 1}
 pprStm :: Show a => Stm a -> Doc
 pprStm stm = case stm of
-  DoNothing              -> empty
+  DoNothing              -> text "φ"
   Assign x e             -> text (filter ('\"'/=) $ show x) <+> text ":=" <+> pprExpr e
   If e s1 s2             -> text "if" <+> parens (pprExpr e) <+> pprStm' s1 <+> text "else" <+> pprStm' s2
   Sequence DoNothing s2  -> pprStm s2
@@ -90,7 +91,7 @@ pprEnv = braces . hcat . intersperse (semi <> space) . map pprBinding . toListEn
 -- |
 -- Pretty Printer for both Statement and Environment
 --
--- >>> putStr $ render $ pprStepStm (While (LessThan (Variable "i") (Number 10)) (Sequence (Assign "sum" (Add (Variable "sum") (Variable "i"))) (Assign "i" (Add (Variable "i") (Number 1)))) :: Stm Name,fromListEnv [("sum",Number 0),("i",Number 0)])
+-- >>> putStr $ render $ pprStepStm (fromListEnv [("sum",Number 0),("i",Number 0)],While (LessThan (Variable "i") (Number 10)) (Sequence (Assign "sum" (Add (Variable "sum") (Variable "i"))) (Assign "i" (Add (Variable "i") (Number 1)))) :: Stm Name)
 -- while (i ＜ 10) {sum := sum ＋ i; i := i ＋ 1} {i <- 0; sum <- 0}
-pprStepStm :: (Ord a, Show a) => (Stm a, Env Expr a) -> Doc
-pprStepStm = uncurry (<+>) . (pprStm *** pprEnv)
+pprStepStm :: (Ord a, Show a) => (Env Expr a, Stm a) -> Doc
+pprStepStm = uncurry (<+>) . (pprStm *** pprEnv) . swap
