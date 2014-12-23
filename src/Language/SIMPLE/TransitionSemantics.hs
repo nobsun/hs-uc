@@ -2,10 +2,12 @@
 module Language.SIMPLE.TransitionSemantics (
    isRedex
   ,reduceExpr
-  ,reduceSequence
+  ,reduceSequenceOfExpr
   ,runExprMachine
   ,isReducible
   ,reduceStm
+  ,reduceSequenceOfStm
+  ,runMachine
   ) where
 
 import Control.Applicative
@@ -113,9 +115,9 @@ reduceExpr σ expr
     _                              -> error "Unknown expression"
 
 -- |
--- make reduce sequence.
-reduceSequence :: (Ord a, Show a) => Env Expr a -> Expr a -> [Expr a]
-reduceSequence = (till isNormalForm .) . iterate . reduceExpr
+-- makes expression reduce sequence.
+reduceSequenceOfExpr :: (Ord a, Show a) => Env Expr a -> Expr a -> [Expr a]
+reduceSequenceOfExpr = (till isNormalForm .) . iterate . reduceExpr
 
 till :: (a -> Bool) -> [a] -> [a]
 till p xs = case break p xs of
@@ -123,7 +125,7 @@ till p xs = case break p xs of
   (ys,z:_) -> ys ++ [z]
 
 -- |
--- displays reduce sequence.
+-- displays expression reduce sequence.
 -- 
 -- >>> runExprMachine env0 exp0
 -- (1 × 2) ＋ (3 × 4)
@@ -143,7 +145,7 @@ till p xs = case break p xs of
 -- 3 ＋ 4
 -- 7
 runExprMachine :: (Ord a, Show a) => Env Expr a -> Expr a -> IO ()
-runExprMachine = (mapM_ (putStrLn . render . pprExpr) .) . reduceSequence
+runExprMachine = (mapM_ (putStrLn . render . pprExpr) .) . reduceSequenceOfExpr
 
 -- |
 -- Predicate whether the specified statement is reducible.
@@ -171,3 +173,14 @@ reduceStm σ stm
             _         -> error "Type error"
         | otherwise      -> (σ,While (reduceExpr σ e) s)
     _ -> error (render (pprStm stm))
+
+-- |
+-- makes statement reduce sequence.
+reduceSequenceOfStm :: (Ord a, Show a) => Env Expr a -> Stm a -> [(Stm a, Env Expr a)]
+reduceSequenceOfStm = (map swap .) . (iterate (uncurry reduceStm) .) . (,)
+  where swap (x,y) = (y,x)
+
+-- |
+-- displays statement reduce sequence.
+runMachine :: (Ord a, Show a) => Env Expr a -> Stm a -> IO ()
+runMachine = (mapM_ (putStrLn . render . pprStepStm) .) . reduceSequenceOfStm
