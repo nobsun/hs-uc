@@ -155,6 +155,26 @@ isReducible _         = True
 
 -- |
 -- make a small-step reducing of the specified statement in the specified environment.
+--
+-- >>> let stm1 = Assign "x" (Add (Variable "x") (Number 1))
+-- >>> putStr $ render $ pprStm stm1
+-- x := x ＋ 1
+-- >>> let env1 = fromListEnv [("x", Number 2)]
+-- >>> putStr $ render $ pprEnv env1
+-- {x <- 2}
+-- >>> isReducible stm1
+-- True
+-- >>> let step2@(env2,stm2) = reduceStm env1 stm1
+-- >>> putStr $ render $ pprStepStm step2
+-- x := 2 ＋ 1 {x <- 2}
+-- >>> let step3@(env3,stm3) = reduceStm env2 stm2
+-- >>> putStr $ render $ pprStepStm step3
+-- x := 3 {x <- 2}
+-- >>> let step4@(env4,stm4) = reduceStm env3 stm3
+-- >>> putStr $ render $ pprStepStm step4
+-- φ {x <- 3}
+-- >>> isReducible stm4
+-- False
 reduceStm :: (Ord a, Show a) => Env Expr a -> Stm a -> (Env Expr a, Stm a)
 reduceStm σ stm
     | not . isReducible $ stm = (σ,stm)
@@ -167,20 +187,69 @@ reduceStm σ stm
             Boolean c -> (σ, if c then t else f)
             _         -> error "Type error"
         | otherwise      -> (σ, If (reduceExpr σ e) t f)
-    While e s
-        | isNormalForm e -> case e of 
-            Boolean c -> (σ, if c then Sequence s stm else DoNothing)
-            _         -> error "Type error"
-        | otherwise      -> (σ,While (reduceExpr σ e) s)
+    While e s -> (σ,If e (Sequence s stm) DoNothing)
+    Sequence DoNothing s2 -> reduceStm σ s2
+    Sequence s1 s2 -> case reduceStm σ s1 of
+        (σ',s1')    -> (σ' ,Sequence s1' s2)
     _ -> error (render (pprStm stm))
 
 -- |
 -- makes statement reduce sequence.
-reduceSequenceOfStm :: (Ord a, Show a) => Env Expr a -> Stm a -> [(Stm a, Env Expr a)]
-reduceSequenceOfStm = (map swap .) . (iterate (uncurry reduceStm) .) . (,)
-  where swap (x,y) = (y,x)
+reduceSequenceOfStm :: (Ord a, Show a) => Env Expr a -> Stm a -> [(Env Expr a, Stm a)]
+reduceSequenceOfStm σ stm = till (not . isReducible . snd) $ iterate (uncurry reduceStm) (σ,stm)
 
 -- |
 -- displays statement reduce sequence.
+--
+-- >>> let stm1 = Assign "x" (Add (Variable "x") (Number 1))
+-- >>> let env1 = fromListEnv [("x", Number 2)]
+-- >>> runMachine env1 stm1
+-- x := x ＋ 1 {x <- 2}
+-- x := 2 ＋ 1 {x <- 2}
+-- x := 3 {x <- 2}
+-- φ {x <- 3}
+-- >>> let stm2 = If (Variable "x") (Assign "y" (Number 1)) (Assign "y" (Number 2))
+-- >>> let env2 = fromListEnv [("x",Boolean True)]
+-- >>> runMachine env2 stm2
+-- if (x) y := 1 else y := 2 {x <- True}
+-- if (True) y := 1 else y := 2 {x <- True}
+-- y := 1 {x <- True}
+-- φ {x <- True; y <- 1}
+-- >>> let stm3 = If (Variable "x") (Assign "y" (Number 1)) DoNothing
+-- >>> let env3 = fromListEnv [("x",Boolean False)]
+-- >>> runMachine env3 stm3
+-- if (x) y := 1 else φ {x <- False}
+-- if (False) y := 1 else φ {x <- False}
+-- φ {x <- False}
+-- >>> let stm4 = Sequence (Assign "x" (Add (Number 1) (Number 1))) (Assign "y" (Add (Variable "x") (Number 3)))
+-- >>> runMachine env0 stm4
+-- x := 1 ＋ 1; y := x ＋ 3 {}
+-- x := 2; y := x ＋ 3 {}
+-- y := x ＋ 3 {x <- 2}
+-- y := 2 ＋ 3 {x <- 2}
+-- y := 5 {x <- 2}
+-- φ {x <- 2; y <- 5}
+-- >>> let stm5 = While (LessThan (Variable "x") (Number 5)) (Assign "x" (Multiply (Variable "x") (Number 3))) :: Stm Name
+-- >>> let env5 = fromListEnv [("x",Number 1)] :: Env Expr Name
+-- >>> runMachine env5 stm5
+-- while (x ＜ 5) x := x × 3 {x <- 1}
+-- if (x ＜ 5) {x := x × 3; while (x ＜ 5) x := x × 3} else φ {x <- 1}
+-- if (1 ＜ 5) {x := x × 3; while (x ＜ 5) x := x × 3} else φ {x <- 1}
+-- if (True) {x := x × 3; while (x ＜ 5) x := x × 3} else φ {x <- 1}
+-- x := x × 3; while (x ＜ 5) x := x × 3 {x <- 1}
+-- x := 1 × 3; while (x ＜ 5) x := x × 3 {x <- 1}
+-- x := 3; while (x ＜ 5) x := x × 3 {x <- 1}
+-- while (x ＜ 5) x := x × 3 {x <- 3}
+-- if (x ＜ 5) {x := x × 3; while (x ＜ 5) x := x × 3} else φ {x <- 3}
+-- if (3 ＜ 5) {x := x × 3; while (x ＜ 5) x := x × 3} else φ {x <- 3}
+-- if (True) {x := x × 3; while (x ＜ 5) x := x × 3} else φ {x <- 3}
+-- x := x × 3; while (x ＜ 5) x := x × 3 {x <- 3}
+-- x := 3 × 3; while (x ＜ 5) x := x × 3 {x <- 3}
+-- x := 9; while (x ＜ 5) x := x × 3 {x <- 3}
+-- while (x ＜ 5) x := x × 3 {x <- 9}
+-- if (x ＜ 5) {x := x × 3; while (x ＜ 5) x := x × 3} else φ {x <- 9}
+-- if (9 ＜ 5) {x := x × 3; while (x ＜ 5) x := x × 3} else φ {x <- 9}
+-- if (False) {x := x × 3; while (x ＜ 5) x := x × 3} else φ {x <- 9}
+-- φ {x <- 9}
 runMachine :: (Ord a, Show a) => Env Expr a -> Stm a -> IO ()
 runMachine = (mapM_ (putStrLn . render . pprStepStm) .) . reduceSequenceOfStm
