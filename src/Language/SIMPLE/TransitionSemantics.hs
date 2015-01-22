@@ -10,7 +10,6 @@ module Language.SIMPLE.TransitionSemantics (
   ,runMachine
   ) where
 
-
 import Control.Applicative
 import Text.PrettyPrint
 import Language.SIMPLE.AbstractSyntax

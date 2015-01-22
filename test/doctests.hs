@@ -6,6 +6,6 @@ main :: IO ()
 main = doctest 
      $ map ("src/Language/SIMPLE/"++)
      ["Environment.hs"
-     ,"TransitionSemantics.hs"
+--     ,"TransitionSemantics.hs"
      ,"PrettyPrint.hs"
      ]
