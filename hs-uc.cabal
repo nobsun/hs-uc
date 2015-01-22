@@ -1,5 +1,5 @@
 name:                hs-uc
-version:             0.1.0.1.1
+version:             0.1.1
 synopsis:            Haskell code version for "Understanding Computation"
 description:         Haskell code version for "Understanding Computation"
 license:             BSD3
