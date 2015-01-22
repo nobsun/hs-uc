@@ -3,4 +3,9 @@ module Main where
 import Test.DocTest
 
 main :: IO ()
-main = doctest ["src/Language/SIMPLE/AbstractSyntax.hs"]
+main = doctest 
+     $ map ("src/Language/SIMPLE/"++)
+     ["AbstractSyntax.hs"
+     ,"Environment.hs"
+     ,"PrettyPrint.hs"
+     ]
