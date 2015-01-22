@@ -41,3 +41,25 @@ specAbstractSyntax = do
         $ isCompound (While undefined undefined) `shouldBe` False
     }
   }
+
+{-
+specTransitionSemantics :: Spec
+specTransitionSemantics = do
+  { describe "isNumber" $ do
+    {
+    }
+    describe "isBoolean" $ do
+    {
+    }
+    describe "isNormalForm" $ do
+    {
+    }
+    describe "isRedex" $ do
+    {
+    }
+    describe "isδredex" $ do
+    {
+    }
+    describe "
+  }
+-}
