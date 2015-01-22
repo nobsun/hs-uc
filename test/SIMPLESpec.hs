@@ -54,12 +54,11 @@ specTransitionSemantics = do
     describe "isNormalForm" $ do
     {
     }
-    describe "isRedex" $ do
-    {
-    }
     describe "isδredex" $ do
     {
     }
-    describe "
+    describe "δreduce" $ do
+    {
+    }
   }
 -}
